@@ -11,14 +11,12 @@ This repository contains practicals for the course ``Introduction to linguistics
 
 ## Schedule
 
-<!-- create a 14 by 3 table -->
-
-| Week | Module | TD link |
-|------|--------|---------|
-| 1    | Introduction to Linguistics       |         |
-| 2    | Phonology 1         |         |
-| 3    | Phonology 2         |         |
-| 4    | Morphology 1         |         |
-| 5    | Morphology 2         |         |
-| 6    | Syntax 1         |         |
-| 7    | Syntax 2         |         |
+| Week | Module | Date | Practicals link
+|------|--------|---------|---------|
+| 1    | Introduction to Linguistics  |     04/09    | [Linguistic diversity](https://github.com/alexeykosh/intro-to-ling/blob/main/S1/TD1-linguistic-diversity.ipynb)     |
+| 2    | Phonology 1         |   11/09          |     |
+| 3    | Phonology 2         |   18/09     |       |
+| 4    | Morphology 1         |   25/09      |     |
+| 5    | Morphology 2         |    02/10     |    |
+| 6    | Syntax 1         |    09/10     |        |
+| 7    | Syntax 2         |    16/10     |       |
