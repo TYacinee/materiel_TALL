@@ -13,7 +13,7 @@ This repository contains practicals for the course ``Introduction to linguistics
 
 | Week | Module | Date | Practicals link
 |------|--------|---------|---------|
-| 1    | Introduction to Linguistics  |     04/09    | [Linguistic diversity](https://github.com/alexeykosh/intro-to-ling/blob/main/S1/TD1-linguistic-diversity.ipynb)     |
+| 1    | Introduction to Linguistics  |     04/09    | [Linguistic diversity](https://colab.research.google.com/drive/1TTj5sfpXoy65KxdT_ti-1z0JJ7HDBFvD?usp=sharing)     |
 | 2    | Phonology 1         |   11/09          |     |
 | 3    | Phonology 2         |   18/09     |       |
 | 4    | Morphology 1         |   25/09      |     |
