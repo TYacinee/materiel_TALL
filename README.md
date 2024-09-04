@@ -2,7 +2,11 @@
 
 ## Overview
 
-This repository contains practicals for the course ``Introduction to linguistics trough data science'' taught at the CPES program at ENS-PSL in the Autumn semester of 2024-2025. 
+This repository contains practicals for the course "Introduction to linguistics trough data science" taught at the CPES program at ENS-PSL during the Autumn semester of 2024-2025.
+
+## Prerequisites  
+
+The students are expected to be familiar with the basics of Python programming language. The knowledge of the following libraries would be an asset: `pandas`, `numpy`, `matplotlib`. 
 
 ## Instructors 
 
