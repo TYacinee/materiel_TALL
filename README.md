@@ -21,6 +21,6 @@ The students are expected to be familiar with the basics of Python programming l
 | 2    | Phonetics & Phonology 1         |   11/09          |  [Sound iconicity](https://colab.research.google.com/drive/1ixG_Ei7cDmKS6d77ZN1EP1eKFVNcZNwH?usp=sharing)  | AK |
 | 3    | Phonetics & Phonology 2         |   18/09     |  [Predicting vowels by formants](https://colab.research.google.com/drive/1g9HHfn_rcD6GZQyEetiTXUjeZy-7oWLl?usp=sharing)     | AK | 
 | 4    | Morphology 1         |   25/09      |  [Morphological analysis](https://github.com/alexeykosh/intro-to-ling/blob/main/S4/TD4-problem-set.pdf)   | AK |
-| 5    | Morphology 2         |    02/10     |    | AK |
+| 5    | Morphology 2         |    02/10     |  [Morpheme-to-word ratio](https://github.com/alexeykosh/intro-to-ling/blob/main/S5/TD5-word-morpheme-ratio.ipynb)  | AK |
 | 6    | Syntax 1         |    09/10     |        | AK |
 | 7    | Syntax 2         |    16/10     |       | MAT |
