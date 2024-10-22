@@ -1,0 +1,194 @@
+---
+title: "LR_9"
+author: "Marc"
+date: "10/22/2024"
+output:
+  pdf_document: default
+  html_document:
+    code_folding: hide
+  word_document: default
+---
+
+
+## add select in Final project instructions
+
+1. Let's have an exercise in class: play with the 'iris' database
+2. Let's think and talk about our final projects
+
+
+## Example of structure for the final project
+
+
+# Introduction
+
+- Three species of flowers (setosa, versicolor, virginica) are currently at the heart of a debate. Some scholars claim that they belong to the same group since they have similar petals and sepals size while others argue that their sepals and petals differ so much that they should categorized as different species. Add a few references if possible...
+
+- The following figure shows the location of petals and sepals on a flower.
+
+![Sepal and Petal](Pic_flower.png){width=100%} 
+
+
+# Research question: 
+
+- Can we distinguish setosa, versicolor, virginica based on Sepal length/width and Petal length/width.
+
+# Loading the data and basic visualization
+
+The Iris flower data set or Fisher's Iris data set is a multivariate data set introduced by the British statistician and biologist Ronald Fisher in his 1936 paper The use of multiple measurements in taxonomic problems as an example of linear discriminant analysis.
+
+The data set consists of 50 samples from each of three species of Iris (Iris setosa, Iris virginica and Iris versicolor). Four features were measured from each sample: the length and the width of the sepals and petals, in centimeters.
+
+The repositery of the data can be found at http://archive.ics.uci.edu/ml/datasets/Iris 
+
+In the following code, we load the required packages and the data.
+```{r}
+#load the packages and suppress the annoying messages at the beginning
+suppressPackageStartupMessages(library(tidyverse))
+suppressPackageStartupMessages(library(ggfortify))
+suppressPackageStartupMessages(library(party))
+# load the data
+data(iris)
+```
+
+Then, we have a quick look at the data to check that it has been loaded correctly. We see that the data has five columns, sepal length/width, petal length/width and species.
+```{r}
+data(iris)
+str(iris)
+```
+
+```{r}
+head(iris)
+```
+
+
+
+Before we do any analysis, let's have a visualization of the data. For instance, we see that petal length and width are positively correlated. Sepal length and width seem to be positively correlated too, but the effect is stronger in setosa.
+```{r}
+iris %>%
+  ggplot(aes(x=Petal.Length,y=Petal.Width, colour = Species)) +
+  geom_point() +
+  geom_smooth()
+iris %>%
+  ggplot(aes(x=Sepal.Length,y=Sepal.Width, colour = Species)) +
+  geom_point() +
+  geom_smooth()
+```
+
+When distinguishing the three species in the graph below. It seems that virginica has a larger size for almost each feature, whereas setosa has the smallest values, except for sepal width. Versicolor is located in the middle for almost every feature. From this visualization, we can expect that the three species are indeed quite different according to sepals and petals length/width. However, further investigation is needed to confirm this point.
+```{r}
+iris %>%
+  gather("Category","Value",-c(Species)) %>%
+  ggplot(aes(x=Category,y=Value,fill=Species)) +
+  geom_boxplot()
+```
+
+# Analysis
+
+In this section, we carry out PCA and classification with decision trees to check if information on petals and sepals can actually help to differentiate the three species.
+
+First, we run the PCA. PCA is a method of dimensionality reduction. In the previous plots with ggplot, we were only able to compare two variables (two columns) of the data at a time. PCA compresses the information of all the columns and allows us to visualize how similar/different are the flowers in our data. In the plot below, each point represents a surveyed flower. The closer the two points the more similar the two flowers are in terms of sepal and petal length/width. The PCA indicates that virginica tends to have bigger petal length and sepal length, since most of the blue points are following the arrows of these two features. Versicolor is located at the starting point of the arrows, which means that most flowers of this species are close to the average values. Finally, setosa is expected to have small petal length and width since most of the red points are found in the opposite direction of the arrows. These observations match with our findings in the visualization section.
+```{r}
+iris %>%
+  # remove information of species to avoid overclassification
+  select(-Species) %>%
+  # run PCA
+  prcomp() %>%
+  autoplot(data = iris,
+           # add colour to the points based on species
+           colour = 'Species',
+           # add arrows showing the effect of each variable
+           loadings = TRUE,
+           loadings.colour = "blue",
+           # add the names of the arrows
+           loadings.label = TRUE,
+           loadings.label.colour = "blue")
+```
+
+```{r eval=FALSE, include=FALSE}
+iris %>% 
+  select(-Species) %>% 
+  prcomp() -> comp_iris
+comp_iris <- data.frame(comp_iris$x[,1:2])
+#determine how many clusters are mathematically optimal, from the ouput, the highest point is 2
+suppressPackageStartupMessages(library(factoextra))
+fviz_nbclust(comp_iris, kmeans, method = "silhouette") +
+  labs(title="Optimal number of clusters - iris")
+#based on the result above, we try kmeans with 2 clusters
+comp_iris %>% 
+  kmeans(2) %>% 
+  autoplot(data=comp_iris)
+```
+
+If you want to compare the clusters with the original families
+```{r eval=FALSE, include=FALSE}
+# add a column to specify the colors
+iris %>% mutate(color = case_when(Species == "setosa" ~ "red",
+                                  Species == "versicolor" ~ "green",
+                                  Species == "virginica" ~ "blue")) -> iris
+comp_iris %>%
+  kmeans(2) %>%
+  
+autoplot(data=comp_iris,
+         label.colour = iris$color,
+         shape = F,
+         frame =T,
+         main = "kmeans clustering based on PCA - Iris")
+```
+
+
+Still, we need to show if these tendencies are actually significant. To do so, we run a classification task based on conditional inference trees. The results show that petal length is mostly sufficient to identify the three species. Petal length below 1.9 cm (Node 1 to Node 2) indicates setosa, whereas above 1.9 (Node 1 to Node 3) and with petal width above 1.7 (Node 3 to Node 9) mostly refers to virginica. 
+```{r fig.width=20, fig.height=8}
+ctree(Species ~. ,
+      data = iris,
+      controls = ctree_control(testtype = "MonteCarlo")) -> flower_tree
+plot(flower_tree, gp = gpar(fontsize = 8))
+```
+
+Yet, we need to measure measure how good is the decision tree shown above. To do so, we measure its accuracy, i.e., how precise can we get when using this tree to predict the species of the flowers in our dataset. We compare this accuracy with the majority baseline, that is to say, what could we get by guessing randomly that every flower belongs to the species with the most data points. In our case, the baseline is 33.33% (50/150) since every species had 30 samples.
+```{r}
+# we extract the responses from the tree 
+pred_flower<-predict(flower_tree)
+# and use them to predict the value of "To" in every row
+accuracy_table<-table(pred_flower,iris$Species)
+# the columns are the right output, the rows are the predictions
+accuracy_table
+# finally, we convert the table into a percentage
+sum(diag(accuracy_table))/sum(accuracy_table)
+# for instance, if the accuracy is 75%, it means that on 100 random cases, the model can guess correctly if there is a "to" or not 75 times
+# But how good or bad is that? let's have a look at the Majority baseline
+max( c(sum(accuracy_table[,1]),sum(accuracy_table[,2]))) /sum(accuracy_table)
+```
+
+
+
+
+The results show that our tree can predict 96% of the data correctly, which is far above the baseline of 33.33%. We can thus infer that information on sepal and petal length/width is useful for distinguishing the three species.
+
+
+# Summary
+
+We can answer our research question as follows: We can distinguish setosa, versicolor, virginica based on Sepal length/width and Petal length/width. As shown in the graph below, the petals of setosa are generally smaller than the two other species, whereas virginica has the largest petal length and width.
+```{r}
+suppressPackageStartupMessages(library(ggforce))
+# specify the content to be added on the plot
+desc <- 'This iris species has a markedly smaller petal than the others.'
+# make the plot
+ggplot(iris, 
+       aes(x=Petal.Length,y=Petal.Width,colour=Species )) +
+  geom_mark_ellipse(aes(filter = Species == 'setosa', # only add the ellipse for setosa
+                        label = 'Setosa', 
+                        # link to the content to be added on the plot
+                        description = desc)) +
+  geom_point()
+```
+
+
+
+
+
+
+
+# References
+
+If you have any reference, put it here.
+
