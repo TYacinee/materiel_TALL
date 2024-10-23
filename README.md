@@ -23,4 +23,4 @@ The students are expected to be familiar with the basics of Python programming l
 | 4    | Morphology 1         |   25/09      |  [Morphological analysis](https://github.com/alexeykosh/intro-to-ling/blob/main/S4/TD4-problem-set.pdf)   | AK |
 | 5    | Morphology 2         |    02/10     |  [Morpheme-to-word ratio](https://colab.research.google.com/drive/1ZVlTvOKka0MOL92N-tscvzFF7UIXyfOa?usp=sharing)  | AK |
 | 6    | Syntax 1         |    09/10     | [Agency bias in Harry Potter](https://colab.research.google.com/drive/1kX9UNUKZ1JvS_Eyx0-eryEDiJHmUNSDm?usp=sharing) | AK |
-| 7    | Syntax 2         |    16/10     |       | MAT |
+| 7    | Syntax 2         |    16/10     | [Order of SVO in UD](https://github.com/alexeykosh/intro-to-ling/blob/main/S7/WordOrderGradient.Rmd)      | MAT |
