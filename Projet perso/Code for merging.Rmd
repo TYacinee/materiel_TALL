@@ -1,0 +1,54 @@
+---
+title: "Code for merging"
+output: html_document
+date: "2024-10-23"
+---
+
+```{r}
+# read the relevant packages
+library(tidyverse)
+library(readxl) 
+```
+
+
+```{r}
+# read the glottolog table
+glottolog <- read.csv("data_raw/glottolog_info.csv")
+# visualize
+glimpse(glottolog)
+```
+
+```{r}
+# read the WALS data and a feature
+WALS <- read_excel("data_raw/WALS.xlsx") %>%
+  # select relevant columns
+  select(glottocode, iso_code, wals_code, Name,
+         genus,
+         SVO_order = `81A Order of Subject, Object and Verb`)
+# visualize
+glimpse(WALS)
+```
+
+```{r}
+# combine both tables
+data <- WALS %>%
+  merge(glottolog, 
+        # name of the column in the main table
+        by.x = "iso_code",
+        # name of the column in the second table
+        by.y = "ISO",
+        # only keep rows that are in the main table
+        all.x = TRUE
+        )
+
+# visualize
+glimpse(data)
+```
+
+```{r}
+# print the table if needed
+data %>% write.csv("data_raw/table.csv",
+                   row.names = FALSE,
+                   fileEncoding = "UTF-8")
+```
+
