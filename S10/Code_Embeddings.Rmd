@@ -1,0 +1,201 @@
+---
+title: "S10"
+output:
+  pdf_document: default
+  html_document: default
+date: "2024-11-12"
+---
+
+Read the basic packages
+```{r}
+library(tidyverse)
+library(zoo)
+library(text2vec)
+library(Rtsne)
+```
+
+Create a corpus with French UD data
+```{r}
+# take a smaller list if needed
+Languages <- c("French")
+
+# open an empty table to store the output
+data <- NULL %>% as.data.frame()
+
+# extract data for the list of languages
+for(z in c(1:length(Languages))){
+  # take all the files in the folder of that language
+  files <- list.files(paste("data_raw/UD/",Languages[z],"/",sep=""))
+  # create and view an object with file names and full paths
+  f <- file.path("data_raw/UD/",Languages[z], files)
+  d <- lapply(f, FUN = function(files){read.delim(files,
+                                                  header = FALSE, 
+                                                  comment.char = "#", 
+                                                  stringsAsFactors = FALSE)})
+  # combine all the files that were read
+  merge.data <- plyr::rbind.fill(d)
+  # add the language annotations
+  merge.data <- merge.data %>%
+    mutate(Language = Languages[z])
+  # merge with the entire data
+  data <- rbind(data, merge.data)
+}
+# remove not used vectors
+rm(merge.data, d)
+
+# arrange the columns of the table
+data <- data %>%
+  select(ID_word = V1, Tag = V6, POS = V4, Lemma = V3, 
+         Dependency = V7, Role = V8, Language) 
+
+# adding start and end of sentences
+data <- data %>%
+  # change IDs to numeric
+  mutate(ID_word = as.numeric(ID_word)) %>%
+  # add gap of IDs between consecutive pair of words
+  mutate(diff = ID_word - lag(ID_word, default = first(ID_word))) %>%
+  # change NAs to 0s if needed
+  replace(is.na(.), 0) %>%
+  # add labels 
+  mutate(ID_sentence = case_when(diff < 0 ~ "New_sentence",
+                                 diff >= 0 ~ "In")) 
+
+# change new sentence markers to sentence number
+data$ID_sentence[which(data$ID_sentence == "New_sentence")] <- 2:(length(data$ID_sentence[which(data$ID_sentence == "New_sentence")])+1)
+# manually add the start of the first sentence
+data$ID_sentence[1] <- 1
+
+# arrange the data
+data <- data %>% 
+  # change the sentence ID to numeric
+  mutate(ID_sentence = as.numeric(ID_sentence)) %>%
+  # remove the diff column
+  select(-diff)
+
+# change NAs to the sentence ID
+data$ID_sentence <- na.locf(data$ID_sentence)
+
+# print the data as a table
+data %>% write.csv("data_raw/UD.csv",
+                   row.names = FALSE,
+                   fileEncoding = "UTF-8")
+
+# extract the sentences
+corpus <- data %>%
+  # remove punctuation
+  filter(!POS %in% c("_","PUNCT","")) %>%
+  # take relevant columns
+  select(Lemma, ID_sentence) %>%
+  # group by sentence
+  group_by(ID_sentence) %>%
+  # put the words of the same sentence together in a column
+  mutate(sentence = paste0(Lemma, collapse = " ")) %>%
+  # take unique values in the sentence column
+  pull(sentence) %>%
+  unique()
+  
+# print the corpus in a file
+corpus %>%
+  writeLines("data_raw/corpus.txt")
+
+# visualize the corpus
+head(corpus)
+```
+
+Create the Glove embeddings. First, we create a vocabulary, i.e., a set of words for which we want to learn word vectors. These words should not be too uncommon. For example we cannot calculate a meaningful word vector for a word which we saw only once in the entire corpus. Here we will take only words which appear at least ten times. text2vec provides additional options to filter vocabulary (see ?prune_vocabulary).
+```{r}
+# Create iterator over tokens
+tokens <- space_tokenizer(corpus)
+# Create vocabulary. Terms will be unigrams (simple words).
+it = itoken(tokens, progressbar = FALSE)
+vocab <- create_vocabulary(it)
+# Only keep vocabulary over a threshold
+vocab <- prune_vocabulary(vocab, term_count_min = 10L)
+# sanity check
+tail(vocab)
+```
+
+Now we have terms in the vocabulary and are ready to construct term-co-occurence matrix (TCM), which we use to train the GloVe algorithm https://www.rdocumentation.org/packages/text2vec/versions/0.5.1/topics/GlobalVectors
+```{r}
+# Use our filtered vocabulary
+vectorizer <- vocab_vectorizer(vocab)
+# create the tcm
+tcm <- create_tcm(#tokenized corpus,
+                  it, 
+                  # the vocabulary
+                  vectorizer, 
+                  # the window
+                  skip_grams_window = 5L,
+                  # the direction of the window
+                  skip_grams_window_context = "symmetric")
+# use the tcm to train Glove
+glove = GlobalVectors$new(#desired dimension for vectors
+                          rank = 50, 
+                          #maximum number of co-occurrences used for weighting
+                          x_max = 10) 
+# extract the vectors
+wv_main = glove$fit_transform(tcm,
+                              # number of iterations
+                              n_iter = 10, 
+                              # set when does the model stop
+                              convergence_tol = 0.01, 
+                              # number of cores to use
+                              n_threads = 8)
+```
+
+We do a visual check to verify if the dimensions are correct. The numbers show the vocabulary size and the dimensions.
+```{r}
+# combine main and context sets of word vectors due to mlapiDecomposition model
+wv_context = glove$components
+word_vectors = wv_main + t(wv_context)
+dim(word_vectors)
+```
+
+Then, we need to visualize the embeddings to see if they actually make sense or not. If we want to look at all the words in the corpus and how they relate to each other, there is a catchall method built into the library to visualize a single overall decent plane for viewing the library; TSNE dimensionality reduction (an intro to TSNE: https://www.analyticsvidhya.com/blog/2017/01/t-sne-implementation-r-python/). First, we transform the embeddings. This step might take a while (20-30 minutes) if the corpus we are using is quite big.
+```{r}
+tsne <- Rtsne(word_vectors, 
+              # optimal number of neighbors for each word, reduce it if no clusters appear
+              perplexity = 50, 
+              # change to TRUE if only plotting a small set of words
+              pca = FALSE, 
+              check_duplicates = FALSE)
+```
+
+
+Now, we can visualize the words. We can choose to only show some words or all the words, in this example, I only show some of them to make the plot run faster.
+```{r}
+tsne$Y %>%
+  as.data.frame() %>%
+  mutate(word = row.names(word_vectors)) %>%
+  # select some words
+  filter(word %in% c("homme","femme",
+                     "grand","petit",
+                     "fruit","champ",
+                     "agriculteur","médecin",
+                     "champ","hôpital")) %>%
+  ggplot(aes(x = V1, y = V2, label = word)) + 
+  geom_text(size = 5) +
+  theme_bw() +  
+  theme(axis.title=element_blank(),
+        legend.title = element_blank()) 
+```
+
+Since the visualization shows that things are working properly, we can go on with measuring the semantic distance/similarity between words that are interesting for us. In the following examples, we measure the semantic similarity between words. The higher the similarity, the more similar two words are.
+```{r}
+# set number of neighbors you want to see
+number.of.neighbors = 30
+
+# write a function
+find_similar_words <- function(word, word_vectors, n = number.of.neighbors) {
+  similarities <- word_vectors[word, , drop = FALSE] %>%
+    # use the cosine similarity function
+    sim2(word_vectors, y = ., method = "cosine")
+  # rank the neighbors by similarity and take the top n
+  similarities[,1] %>% sort(decreasing = TRUE) %>% head(n)
+}
+
+# examples
+find_similar_words("femme",word_vectors)
+find_similar_words("homme",word_vectors)
+```
+
