@@ -1,0 +1,59 @@
+---
+title: "Make a survey locally"
+output: html_document
+date: "2024-11-19"
+---
+
+```{r}
+
+# Load packages
+library(shiny)
+library(shinysurveys)
+
+# open an empty table to store the output
+
+# Define questions in the format of a shinysurvey
+survey_questions <- data.frame(
+  question = c("What is your favorite food?",
+               "What's your name?"),
+  option = NA,
+  input_type = "text",
+  input_id = c("favorite_food", "name"),
+  dependence = NA,
+  dependence_value = NA,
+  required = c(TRUE, FALSE)
+)
+
+# Define shiny UI
+ui <- fluidPage(
+  surveyOutput(survey_questions,
+               survey_title = "Hello, World!",
+               survey_description = "A demo survey")
+)
+
+# Define shiny server
+server <- function(input, output, session) {
+  renderSurvey()
+  
+  observeEvent(input$submit, {
+    response_data <- getSurveyData()
+    write.table(cbind(timestamp(), response_data),
+              "survey.csv",
+              append = TRUE,
+              col.names = FALSE)
+    # print message when submitted
+    showModal(modalDialog(
+        title = "Thank you",
+        paste0("For participating in this survey"),
+        easyClose = TRUE,
+        footer = NULL
+      ))
+    
+  })
+  
+}
+
+# Run the shiny application
+shinyApp(ui, server)
+```
+
