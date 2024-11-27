@@ -24,3 +24,4 @@ The students are expected to be familiar with the basics of Python programming l
 | 5    | Morphology 2         |    02/10     |  [Morpheme-to-word ratio](https://colab.research.google.com/drive/1ZVlTvOKka0MOL92N-tscvzFF7UIXyfOa?usp=sharing)  | AK |
 | 6    | Syntax 1         |    09/10     | [Agency bias in Harry Potter](https://colab.research.google.com/drive/1kX9UNUKZ1JvS_Eyx0-eryEDiJHmUNSDm?usp=sharing) | AK |
 | 7    | Syntax 2         |    16/10     | [Order of SVO in UD](https://github.com/alexeykosh/intro-to-ling/blob/main/S7/WordOrderGradient.Rmd)      | MAT |
+| 8    | Semantics 1         |    23/10 (27/11)     | [Colexification of SNOW and ICE]()      | AK |
