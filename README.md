@@ -25,3 +25,5 @@ The students are expected to be familiar with the basics of Python programming l
 | 6    | Syntax 1         |    09/10     | [Agency bias in Harry Potter](https://colab.research.google.com/drive/1kX9UNUKZ1JvS_Eyx0-eryEDiJHmUNSDm?usp=sharing) | AK |
 | 7    | Syntax 2         |    16/10     | [Order of SVO in UD](https://github.com/alexeykosh/intro-to-ling/blob/main/S7/WordOrderGradient.Rmd)      | MAT |
 | 8    | Semantics 1         |    23/10 (27/11)     | [Colexification of SNOW and ICE](https://colab.research.google.com/drive/1HYWZXaXJT3Fs9GimU093sMoaqE3M1nuL?usp=sharing)      | AK |
+| 10   | Semantics 2         |    12/11     | [Word embeddings with Glove](https://github.com/alexeykosh/intro-to-ling/tree/main/S10)      | MAT |
+| 11   | Sociolinguistics 1        |    19/11     | [Sociolinguistics and questionnaires](https://github.com/alexeykosh/intro-to-ling/tree/main/S11)      | MAT |
