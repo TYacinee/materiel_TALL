@@ -1,0 +1,43 @@
+---
+title: "Untitled"
+output: html_document
+date: "2024-12-03"
+---
+
+
+```{r}
+# reading basic packages
+library(tidyverse)
+```
+
+
+```{r}
+data <- read.csv("data_raw/grambank-v1.0.3/grambank-grambank-7ae000c/cldf/values.csv") %>%
+  # keep relevant columns
+  select(Language = Language_ID, 
+         Feature = Parameter_ID,
+         Value)
+
+# read language data
+languages <- read.csv("data_raw/grambank-v1.0.3/grambank-grambank-7ae000c/cldf/languages.csv")
+
+# merge features and language data
+data <- data %>%
+  merge(languages, 
+        by.x = "Language",
+        by.y = "ID",
+        all.x = TRUE)
+
+# print to long format
+data %>% 
+  pivot_wider(names_from = Feature, values_from = Value) %>%
+  write.csv("data_raw/Grambank.csv",
+            row.names = FALSE,
+            fileEncoding = "UTF-8")
+
+# visualize
+glimpse(data)
+```
+
+
+
