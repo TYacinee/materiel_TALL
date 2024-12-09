@@ -1,0 +1,366 @@
+---
+title: "Examples of regression and mixed models"
+author: "Marc Allassonnière-Tang (UMR 7206)"
+output:
+  pdf_document:
+    fig_caption: yes
+    highlight: zenburn
+    toc: yes
+    toc_depth: '5'
+  word_document:
+    toc: yes
+    toc_depth: '5'
+always_allow_html: true
+---
+
+```{css, echo=FALSE}
+/* Move code folding buttons to the left */
+div.col-md-12 .pull-right {
+  float: left !important
+}
+```
+
+# Notes
+
+This is the supplementary materials for running regression and mixed models. The code uses the palmer penguin dataset as an example (https://allisonhorst.github.io/palmerpenguins/). 
+
+# Basic settings
+
+First, we read the basic packages and set the seed for reproducibility. The most relevant is the tidyverse work environment. See https://www.tidyverse.org/ for more details.
+```{r message=FALSE, warning=FALSE}
+# load the package with penguin data 
+library(palmerpenguins)
+# save the data as a named data frame
+data <- penguins
+# load basic packages
+library(readxl)
+library(tidyverse)
+library(knitr)
+# packages for correlation paired plot
+library(GGally)
+# packages for model performance 
+library(caret)
+library(sjPlot)
+library(MuMIn)
+# set seed for reproducibility 
+set.seed(10)
+# set visual options for numbers
+options(scipen=999)
+```
+
+# Data visualization
+
+Have a look at the raw data, which has continuous and categorical variables.
+```{r}
+glimpse(data)
+```
+
+Make a correlation plot of all the variables we are looking at. The correlation coefficient *r* can be interpreted as follows:
+
+  - measure of *linear* relationship
+  - between *-1.0* (perfectly *negative*) and *+1.0* (perfectly *positive*)
+  - *0* means *no* (linear) relationship
+
+**correlation is not regression**
+
+- correlation = the extent to which x and y move together
+- regression = the impact of a change of unit on x in y
+
+```{r fig.height=15, fig.width=15, message=FALSE, warning=FALSE}
+data %>%
+  ggpairs(lower=list(continuous=wrap("smooth", colour="black")),
+          upper = list(continuous = wrap("cor", size=4, colour = "black"))) +
+  # plot settings
+  theme(strip.text = element_text(size = 14),
+        axis.text = element_text(size = 10))
+```
+
+
+# Linear regression
+
+First, let's have a look at simple linear regression.
+
+**The Estimates** can be manually read as follows. If in a hypothetical model, we are trying to predict the variable X based on the variables A, B, and sex, which have an estimate of 1,3, and -1 (for male). And the intercept is 0.5. If a data point has the following values for the hypothetical variables encoded in the data.
+
+- X (the predicted variable) = 370
+- A = 364
+- B = 3
+- sex = male
+
+Then, the predicted X would be = the intercept 0.5 + (1 * 364) + (3 * 3) + (-1 * 1) = 372.5.
+
+```{r}
+# arrange the data a bit
+tmp <- data %>%
+  # change the coding to numerical values if needed
+  mutate(body_mass_g = as.numeric(body_mass_g)) %>%
+  # rename the variables to be predicted
+  rename(To_Predict = body_mass_g) %>%
+  # remove the rows with NA values
+  drop_na()
+
+# creating the model
+model <- lm(To_Predict ~ species + bill_length_mm + bill_depth_mm +
+              flipper_length_mm + sex,
+            data = tmp)
+
+# visualizing the model
+summary(model)
+```
+
+We can visualize how the predictions align with the actual values.
+```{r}
+# combine predictions and actual values
+cbind(predict(model), tmp$To_Predict) %>%
+  as.data.frame() %>%
+  rename(Predictions = 1, Actual = 2) %>%
+  # make a plot 
+  ggplot(aes(x = Predictions, y = Actual)) +
+  geom_point(size=1, alpha = 0.2) +
+  geom_line(aes(y = predict(model)), color = "red") 
+```
+
+The R-square (R2), which represents the correlation between the actual values and the predicted values. The higher the R2, the better the model (can interpret it as a correlation coefficient).
+```{r}
+caret::R2(predict(model), tmp$To_Predict) %>% round(digits = 2)
+```
+
+
+We can also extract the effect size of each variable by calculating how much the variance explained by the model drops when a given variable is removed.
+```{r}
+# open an empty table to store the output
+effect.table <-NULL %>% as.data.frame()
+
+# extract a list with all the predictors, removing those we don't use
+valid.names <- names(tmp)[!names(tmp) %in% c("To_Predict",
+                                             "year",
+                                             "island")]
+
+# for each predictor
+for(i in 0:length(valid.names)) {
+  
+  if(i == 0){
+    # write the formula
+    frm <- as.formula(paste("To_Predict ~ ",
+                            paste(valid.names, collapse = "+")))
+    # feed it to the model
+    model.tmp <- lm(frm, data = tmp) 
+    
+    #Determine R2:
+    effect.table <- rbind(effect.table,
+                          c("all factors",
+                            caret::R2(predict(model.tmp), tmp$To_Predict)))
+  }else{
+    
+    # write the formula
+    frm <- as.formula(paste("To_Predict ~ ",
+                            paste(valid.names[-i], collapse = "+")))
+    # feed it to the model
+    model.tmp <- lm(frm, data = tmp) 
+    
+    #Determine R2:
+    effect.table <- rbind(effect.table, 
+                          c(valid.names[i],
+                            caret::R2(predict(model.tmp), tmp$To_Predict)))
+  }}
+
+# adjust column names
+colnames(effect.table) <- c("Factor", "Var.exp")
+
+# add a column for effect size
+ effect.table <- effect.table %>%
+  # make the column numeric
+  mutate(Var.exp = as.numeric(Var.exp),
+         # effect size = gap of variance explained with the main model
+         Effect.size = as.numeric(effect.table$Var.exp[1]) - Var.exp) %>%
+  filter(Factor != "all factors") %>%
+  mutate(Effect.size = round(Effect.size, digits = 4))
+
+# visual check
+effect.table %>% arrange(desc(Effect.size))
+```
+
+
+
+# Linear mixed models
+
+These models are similar to regression models. However, they include the distinction between fixed and random effects. Fixed effects are the variables that have a fixed type of interaction with the response variable while the random effects are the variables that do not. In short, mixed models consider that the **intercept and the slope can vary** across members of a group. 
+
+First, we compare which model is better. Typically, we look at the AIC (Akaike) score. The calculation of AIC not only regards the goodness of fit of a model, but also takes into account the simplicity of the model. In this way, AIC deals with the trade-off between goodness of fit and complexity of the model, and as a result, disencourages overfitting. A smaller AIC is preferred. 
+
+If you see the warning "boundary (singular) fit: see help('isSingular')", it means that the model can make too accurate predictions and it considers statistically irrealist, i.e., the model overfits. If that happens, you can try removing some variables to avoid the warning. You can also report the model but highlighting that there is the possibility of overfitting.
+```{r}
+# arrange the data a bit
+tmp <- data %>%
+  # change the coding to numerical values if needed
+  mutate(body_mass_g = as.numeric(body_mass_g)) %>%
+  # rename the variables to be predicted
+  rename(To_Predict = body_mass_g) %>%
+  # remove the rows with NA values
+  drop_na()
+
+# for random slope, e.g., (1+flipper_length_mm|island), data=base) 
+# This model, in addition to a random intercept for island, also contains a random slope in flipper length. This means that the rate at which body mass increases based on flipper length is different from island to island. If an individual has a positive random effect, then they increase more quickly with flipper length than the average.
+
+# model with all factors, using year and island as random effects
+model1 <- lmerTest::lmer(To_Predict ~ (1|year) + (1|island) +
+                          species + bill_length_mm + bill_depth_mm +
+                          flipper_length_mm + sex,
+                         # if you want to suppress the singularity warning
+                         #control=lmerControl(check.conv.singular = 
+                         #.makeCC(action = "ignore",  tol = 1e-4)),
+                         data = tmp)
+
+# model with only measurements
+model2 <- lmerTest::lmer(To_Predict ~ (1|year) + (1|island) +
+                          bill_length_mm + bill_depth_mm +
+                          flipper_length_mm,
+                         # if you want to suppress the singularity warning
+                         #control=lmerControl(check.conv.singular = 
+                         #.makeCC(action = "ignore",  tol = 1e-4)),
+                         data = tmp)
+
+# model with only categorical variables
+model3 <- lmerTest::lmer(To_Predict ~ (1|year) + (1|island) +
+                          species + sex,
+                         # if you want to suppress the singularity warning
+                         #control=lmerControl(check.conv.singular = 
+                         #.makeCC(action = "ignore",  tol = 1e-4)),
+                         data = tmp)
+
+# null model
+model4 <- lmerTest::lmer(To_Predict ~ (1|year) + (1|island),
+                         # if you want to suppress the singularity warning
+                         #control=lmerControl(check.conv.singular = 
+                         #.makeCC(action = "ignore",  tol = 1e-4)),
+                         data = tmp)
+
+# comparing all the models
+anova(model1, model2, model3, model4,
+      # avoid that anova refits the models to ML
+      refit = FALSE)
+```
+
+We can also test what happens when we remove one factor at a time.
+```{r}
+drop1(model1,test="Chisq")
+```
+
+We visualize the output of the best model.
+
+**The scaled residuals** should ideally be centered around 0, which would mean that the predictions are quite close to the real data points.
+
+**The Estimates** can be manually read as follows. If in a hypothetical model, we are trying to predict the variable X based on the variables A, B, and sex, which have an estimate of 1,3, and -1 (for male). And the intercept is 0.5. If a data point has the following values for the hypothetical variables encoded in the data.
+
+- X (the predicted variable) = 370
+- A = 364
+- B = 3
+- sex = male
+
+Then, the predicted X would be = the intercept 0.5 + (1 * 364) + (3 * 3) + (-1 * 1) = 372.5.
+
+**The random effect** part tells you how much variance you find among levels of your grouping factors, plus the residual variance. If the variance is high, it means that the factors explain a lot of variation, e.g., we divide the variance of a factor by the total variance: 1/(1 + 3) = 0.25. So the random effects explain 25% of the variance that is left over after the variance explained by the fixed effects.
+
+**Correlation of fixed effects** is about the expected correlation of the regression coefficients. It is telling you that if you did the experiment again and it so happened that the coefficient for X got smaller, it is likely that the coefficient of Y would go up (or down).
+
+```{r}
+summary(model1)
+```
+
+We can visualize how the predictions align with the actual values.
+```{r}
+# combine predictions and actual values
+cbind(predict(model1), tmp$To_Predict) %>%
+  as.data.frame() %>%
+  rename(Predictions = 1, Actual = 2) %>%
+  # make a plot 
+  ggplot(aes(x = Predictions, y = Actual)) +
+  geom_point(size=1, alpha = 0.2) +
+  geom_line(aes(y = predict(model)), color = "red") 
+```
+
+We visualize the fixed effects.
+```{r warning=FALSE}
+#png("plot.png", res=300, height=1100, width=1600)
+sjPlot::plot_model(model1, type = "est",  auto.label = FALSE,
+                   vline.color = "green", sort.est = TRUE, show.values = TRUE)
+#dev.off()
+#sjPlot::plot_model(model1, type = "pred")
+sjPlot::plot_model(model1, type = "slope")
+```
+
+We also plot the random effects. Ideally, you want them centered around the middle line and crossing it, showing that there is no strong effect from these variables. 
+```{r}
+sjPlot::plot_model(model1, auto.label = FALSE, type = "re", # plots random effects
+                   vline.color = "green", sort.est = TRUE, show.values = TRUE, 
+                   # add this to get the effects sorted for random effects
+                   grid = FALSE) 
+```
+
+
+We can extract the effect size of each variable by calculating how much the variance explained by the model drops when a given variable is removed.
+```{r}
+# open an empty table to store the output
+effect.table <-NULL %>% as.data.frame()
+
+# extract a list with all the predictors
+valid.names <- names(tmp)[!names(tmp) %in% c("To_Predict",
+                                             "year",
+                                             "island")]
+
+# for each predictor
+for(i in 0:length(valid.names)) {
+  
+  if(i == 0){
+    # write the formula
+    frm <- as.formula(paste("To_Predict ~ (1|year) + (1|island) +",
+                            paste(valid.names, collapse = "+")))
+    # feed it to the model
+    model.tmp <- lmerTest::lmer(frm, data = tmp) 
+    
+    #Determine R2:
+    effect.table <- rbind(effect.table,
+                          c("all factors",
+                            caret::R2(predict(model.tmp), tmp$To_Predict)))
+  }else{
+    
+    # write the formula
+    frm <- as.formula(paste("To_Predict ~ (1|year) + (1|island) +",
+                            paste(valid.names[-i], collapse = "+")))
+    # feed it to the model
+    model.tmp <- lmerTest::lmer(frm, data = tmp) 
+    
+    #Determine R2:
+    effect.table <- rbind(effect.table, 
+                          c(valid.names[i],
+                            caret::R2(predict(model.tmp), tmp$To_Predict)))
+  }}
+
+# adjust column names
+colnames(effect.table) <- c("Factor", "Var.exp")
+
+# add a column for effect size
+effect.table <- effect.table %>%
+  # make the column numeric
+  mutate(Var.exp = as.numeric(Var.exp),
+         # effect size = gap of variance explained with the main model
+         Effect.size = as.numeric(effect.table$Var.exp[1]) - Var.exp) %>%
+  filter(Factor != "all factors") %>%
+  mutate(Effect.size = round(Effect.size, digits = 4))
+
+# visual check
+effect.table %>% arrange(desc(Effect.size))
+```
+
+
+- The R-square (R2), which represents the correlation between the actual values and the predicted values. The higher the R2, the better the model (can interpret it as a correlation coefficient).
+```{r}
+caret::R2(predict(model1), tmp$To_Predict) %>% round(digits = 2)
+```
+
+```{r}
+# r2marginal represents the variance explained by the fixed effects
+# r2conditional represents the variance explained by the entire model (fixed + random effects)
+MuMIn::r.squaredGLMM(model1)
+```
+
