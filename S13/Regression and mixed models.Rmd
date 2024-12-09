@@ -201,6 +201,7 @@ tmp <- data %>%
 
 # for random slope, e.g., (1+flipper_length_mm|island), data=base) 
 # This model, in addition to a random intercept for island, also contains a random slope in flipper length. This means that the rate at which body mass increases based on flipper length is different from island to island. If an individual has a positive random effect, then they increase more quickly with flipper length than the average.
+# https://stats.stackexchange.com/questions/31569/questions-about-how-random-effects-are-specified-in-lmer
 
 # model with all factors, using year and island as random effects
 model1 <- lmerTest::lmer(To_Predict ~ (1|year) + (1|island) +
