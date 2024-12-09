@@ -298,6 +298,15 @@ sjPlot::plot_model(model1, auto.label = FALSE, type = "re", # plots random effec
 ```
 
 
+We can plot the random intercepts and slopes
+```{r}
+plot_model(model1, type="pred",
+           terms=c("flipper_length_mm","year"),
+           pred.type="re", ci.lvl = NA)
+
+```
+
+
 We can extract the effect size of each variable by calculating how much the variance explained by the model drops when a given variable is removed.
 ```{r}
 # open an empty table to store the output
